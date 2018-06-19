@@ -8,7 +8,7 @@ use ArtisanSDK\Generic\Contract;
 class HashMap extends Generic
 {
     /**
-     * Construct the generic as a typed proxy to the untyped concrete.
+     * Construct the generic as a typed proxy to the untyped template.
      *
      * @param mixed $key type for generic hash map
      * @param mixed $value type for generic hash map

@@ -13,18 +13,18 @@ abstract class Generic implements Contract
     /**
      * Map of method parameter positions to argument types.
      *
-     * @example Generic::make($concrete, 'int', 'string') --> ['foo' => [0 => 'int', 1 => 'string']]
+     * @example Generic::make($template, 'int', 'string') --> ['foo' => [0 => 'int', 1 => 'string']]
      *
      * @var array
      */
     private $methods = [];
 
     /**
-     * The underlying untyped concrete.
+     * The underlying untyped template.
      *
      * @var \ArtisanSDK\Generic\Contract
      */
-    private $concrete;
+    private $template;
 
     /**
      * Flag for if generic type checking is enabled.
@@ -41,9 +41,9 @@ abstract class Generic implements Contract
     const ENV_VARIABLE = 'PHP_GENERICS_DISABLE';
 
     /**
-     * Construct the generic as a typed proxy to the untyped concrete.
+     * Construct the generic as a typed proxy to the untyped template.
      *
-     * @param mixed $concrete
+     * @param mixed $template
      * @param mixed $types
      *
      * @throws \ReflectionException when method is missing parameter dockblocks
@@ -51,12 +51,12 @@ abstract class Generic implements Contract
     public function __construct()
     {
         $types = func_get_args();
-        $concrete = array_shift($types);
+        $template = array_shift($types);
 
-        // The untyped concrete could be anything from a string, object,
-        // or concrete type resolver (callable) so we need to resolve input
-        // to an instance of the concrete object.
-        $this->concrete = $this->resolveConcrete($concrete);
+        // The untyped template could be anything from a string, object,
+        // or template type resolver (callable) so we need to resolve input
+        // to an instance of the template object.
+        $this->template = $this->resolveTemplate($template);
 
         // Type checking can be slower than not type checking so if you want
         // max performance in production, set the environment variable to false
@@ -71,15 +71,15 @@ abstract class Generic implements Contract
 
             // Using reflection on the generic interface we get the parameters
             // names that correspond to the position of the resolved types.
-            $reflection = new ReflectionClass($this->concrete);
+            $reflection = new ReflectionClass($this->template);
             $method = $reflection->getMethod('generic');
             $params = $this->resolveParams($method);
             if( empty($params) ) {
                 throw new ReflectionException(sprintf('Invalid docblock on %s::%s() method.', $method->class, $method->name));
             }
 
-            // Using reflection on the public methods of the concrete we create
-            // a method map of concrete method parameters to the resolved types.
+            // Using reflection on the public methods of the template we create
+            // a method map of template method parameters to the resolved types.
             foreach($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
                 $this->methods[$method->name] = [];
                 foreach($this->resolveParams($method) as $offset => $name) {
@@ -92,7 +92,7 @@ abstract class Generic implements Contract
     }
 
     /**
-     * Forward calls to proxied untyped concrete.
+     * Forward calls to proxied untyped template.
      *
      * @param  string $method
      * @param  array  $args
@@ -103,7 +103,7 @@ abstract class Generic implements Contract
      */
     public function __call($method, $args = [])
     {
-        if( method_exists($this->concrete, $method) ) {
+        if( method_exists($this->template, $method) ) {
 
             if( $this->enabled() ) {
                 foreach($args as $index => $value ) {
@@ -117,17 +117,17 @@ abstract class Generic implements Contract
             }
 
             // @todo could do return type checking too
-            return call_user_func_array([$this->concrete, $method], $args);
+            return call_user_func_array([$this->template, $method], $args);
         }
 
-        throw new BadMethodCallException(sprintf('Generic %s::%s() method does not exist.', get_class($this->concrete), $method));
+        throw new BadMethodCallException(sprintf('Generic %s::%s() method does not exist.', get_class($this->template), $method));
     }
 
     /**
      * Make a new generic based on class.
      *
-     * @param mixed $concrete for generic
-     * @param mixed $types for generic concrete
+     * @param mixed $template for generic
+     * @param mixed $types for generic template
      *
      * @return \ArtisanSDK\Generic\Contract
      */
@@ -167,29 +167,29 @@ abstract class Generic implements Contract
     }
 
     /**
-     * Resolve the untyped concrete from a mixed argument.
+     * Resolve the untyped template from a mixed argument.
      *
-     * @param  mixed $concrete to resolve
+     * @param  mixed $template to resolve
      *
      * @return \ArtisanSDK\Generic\Contract
      */
-    private function resolveConcrete($concrete) : Contract
+    private function resolveTemplate($template) : Contract
     {
-        // Untyped concrete was passed in already constructed.
-        if( is_object($concrete) ) {
-            return $concrete;
+        // Untyped template was passed in already constructed.
+        if( is_object($template) ) {
+            return $template;
         }
 
-        // A resolver was passed which should make the untyped concrete.
-        if( is_callable($concrete) ) {
-            return $this->resolveConcrete($concrete());
+        // A resolver was passed which should make the untyped template.
+        if( is_callable($template) ) {
+            return $this->resolveTemplate($template());
         }
 
-        // An assumed class name was passed to construct the untyped concrete.
-        // If the untyped concrete is not implement the generic contract then
-        // the concrete will be constructed but the return type check of this
+        // An assumed class name was passed to construct the untyped template.
+        // If the untyped template is not implement the generic contract then
+        // the template will be constructed but the return type check of this
         // method will fail and that will ensure type consistency.
-        return new $concrete();
+        return new $template();
     }
 
     /**

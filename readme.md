@@ -47,32 +47,32 @@ over for lack of support. You can [read it here &rarr;](https://wiki.php.net/rfc
 
 ### Creating Custom Generics
 
-A generic consists of a proxied concrete class and the typed generic that extends
-the base abstract generic. The proxied concrete class can make basic type assumptions
+A generic consists of a proxied template class and the typed generic that extends
+the base abstract generic. The proxied template class can make basic type assumptions
 based on its behavior but it is untyped with respect to its parameters. This allows
 for the proxied class to encapsulate the behavioral logic in the form of the template
-while remaining ignorant of the proxy that wraps the class. The concrete class implements
+while remaining ignorant of the proxy that wraps the class. The template class implements
 the `ArtisanSDK\Generic\Contract` which requires a `generic()` static factory
-be implemented. Application code should never depend directly on this concrete.
+be implemented. Application code should never depend directly on this template.
 
 The typed generic extends the base abstract generic `ArtisanSDK\Generic\Generic`
 which also implements the `ArtisanSDK\Generic\Contract`. The purpose of this class
 is to allow application code to type hint a class that has the defined behavior
-of the concrete while providing the templating functionality of a generic. This
+of the template while providing the templating functionality of a generic. This
 maintains type consistency. The parent logic of the abstract generic uses reflection
 when type checking is enabled (default) by comparing the templated parameters defined
 in the doc blocks of the `generic()` method implemented on the typed generic against
-those passed when a method on the proxied concrete class is called. A typed generic
-must use the same parameter names in all methods of the concrete if the type of the
+those passed when a method on the proxied template class is called. A typed generic
+must use the same parameter names in all methods of the template if the type of the
 parameter is to be templated.
 
 #### Stack Example
 
 The following is an example of a custom `App\Types\Stack` generic which proxies
 to the untyped `App\Types\Templates\Stack` class. Note that the `generic()` method on
-both the typed generic and the proxied concrete have the same doc block (the
+both the typed generic and the proxied template have the same doc block (the
 parameter name is important) and that all the public methods of the proxied
-concrete class use the same parameter names in the doc blocks if the typed parameter
+template class use the same parameter names in the doc blocks if the typed parameter
 should be checked. The order of the typed parameters does not matter for custom
 methods.
 
@@ -105,7 +105,7 @@ class Stack extends Generic
 }
 ```
 
-This is the proxied concrete class which defines the generics behavior. Notice
+This is the proxied template class which defines the generics behavior. Notice
 how `push()` type hints with the doc block the `$item` parameter and is therefore
 type checked while `all()` and `pop()` accept no parameters and are not type checked.
 Additionally `slice()` accepts parameters but does not type hint them and therefore
@@ -169,6 +169,11 @@ run checks in your CI/CD pipelines).
 ```bash
 PHP_GENERICS_DISABLE=1 php -d memory_limit=256M tests/Example.php
 ```
+
+The performance difference for generating 100K type objects is negligible at only
+0.0141ms average while the cost difference of making 40K calls to the proxied
+template class with type checking enabled is 20ms. The memory consumption is much
+higher however with a 215MB difference observed.
 
 ## Licensing
 

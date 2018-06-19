@@ -10,57 +10,57 @@ use ArtisanSDK\Generic\Contract;
 use ArtisanSDK\Generic\Types\Collection;
 use ArtisanSDK\Generic\Types\HashMap;
 
-class Duck {}
-class User {}
+class Foo {}
+class Bar {}
 
 // Construct a typed generic different ways:
 // 1) use the type factory
 // 2) use the type constructor
-// 3) use the concrete factory (bad)
-$generic = HashMap::generic(Contract::TYPE_STRING, User::class);
-$generic = new HashMap(Contract::TYPE_STRING, User::class);
-$generic = ArtisanSDK\Generic\Concretes\HashMap::generic(Contract::TYPE_STRING, User::class);
+// 3) use the template factory (bad)
+$generic = HashMap::generic(Contract::TYPE_STRING, Bar::class);
+$generic = new HashMap(Contract::TYPE_STRING, Bar::class);
+$generic = ArtisanSDK\Generic\Types\Templates\HashMap::generic(Contract::TYPE_STRING, Bar::class);
 
-// Set the user at the foo key in the hash map
-$users = HashMap::generic(Contract::TYPE_STRING, User::class);
-$users->set('foo', new User()); // ['foo' => User]
+// Set the bar at the foo key in the hash map
+$bars = HashMap::generic(Contract::TYPE_STRING, Bar::class);
+$bars->set('foo', new Bar()); // ['foo' => Bar]
 
 // Demonstrates that type checking is based on reflected param names
-$user = new User();
-$users->set('bar', $user);
-$users->get('bar'); // User
-$users->key($user); // bar
-$users->all(); // ['foo' => User, 'bar' => User]
+$bar = new Bar();
+$bars->set('bar', $bar);
+$bars->get('bar'); // Bar
+$bars->key($bar); // bar
+$bars->all(); // ['foo' => Bar, 'bar' => Bar]
 
-// Setting a duck is not allowed in a user hash map
-// Expecting User type argument but received Duck instead.
-try { $users->set('foo', new Duck()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
+// Setting a foo is not allowed in a bar hash map
+// Expecting Bar type argument but received Foo instead.
+try { $bars->set('foo', new Foo()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
 
 // Setting an integer key is not allowed in a string key hash map
 // Expecting string type argument but received integer instead.
-try { $users->set(0, new User()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
+try { $bars->set(0, new Bar()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
 
 // Demonstrate different generics can be created
-$ducks = HashMap::generic(Contract::TYPE_INT, Duck::class);
-$ducks->set(0, new Duck());
+$foos = HashMap::generic(Contract::TYPE_INT, Foo::class);
+$foos->set(0, new Foo());
 
 // Different generics can have different signatures and still type check
-$users = Collection::generic(User::class);
-$users->add(new User());
+$bars = Collection::generic(Bar::class);
+$bars->add(new Bar());
 
-// Adding a duck to a user collection will fail
-// Expecting User type argument but received Duck instead.
-try { $users->add(new Duck()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
+// Adding a foo to a bar collection will fail
+// Expecting Bar type argument but received Foo instead.
+try { $bars->add(new Foo()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
 
-// Both users and ducks are instances of collection generic.
+// Both bars and foos are instances of collection generic.
 // Typehint for the typed collection generic not the proxied collection generic
-// nor the generic contract itself. Unfortunately you can't typehint for a user
-// typed collection or a duck type collection like you could with built in generics.
-$users = Collection::generic(User::class);
-$ducks = Collection::generic(Duck::class);
-$foo = function(Collection $collection) {};
-$foo($users);
-$foo($ducks);
+// nor the generic contract itself. Unfortunately you can't typehint for a bar
+// typed collection or a foo type collection like you could with built in generics.
+$foos = Collection::generic(Foo::class);
+$bars = Collection::generic(Bar::class);
+$callable = function(Collection $collection) {};
+$callable($foos);
+$callable($bars);
 
 // Performance test for the cost of constructing generics
 // 0.0141ms, 215MB difference
@@ -72,8 +72,8 @@ for($i=0;$i<100000;$i++) {
     $timer = (microtime(true) - $time);
     $timers[] = $timer;
 }
-print_r('= '.round(array_sum($timers) / count($timers) * 1000, 4).' ms average'.PHP_EOL);
-print_r('= '.round(memory_get_usage()/1024/1024).'MB'.PHP_EOL);
+echo '= '.round(array_sum($timers) / count($timers) * 1000, 4).' ms average'.PHP_EOL;
+echo '= '.round(memory_get_usage()/1024/1024).'MB'.PHP_EOL;
 
 // Performance test for the cost of type checking at call time
 // 20ms, 215MB difference
@@ -90,7 +90,7 @@ for($i=0;$i<10;$i++) {
     }
     $timer = (microtime(true) - $time);
     $timers[] = $timer;
-    print_r(($i+1).' > '.round($timer*1000).' ms'.PHP_EOL);
+    echo ($i+1).' > '.round($timer*1000).' ms'.PHP_EOL;
 }
-print_r('= '.round(array_sum($timers) / count($timers) * 1000).' ms average'.PHP_EOL);
-print_r('= '.round(memory_get_usage()/1024/1024).'MB'.PHP_EOL);
+echo '= '.round(array_sum($timers) / count($timers) * 1000).' ms average'.PHP_EOL;
+echo '= '.round(memory_get_usage()/1024/1024).'MB'.PHP_EOL;
