@@ -28,6 +28,33 @@ in the performance tests requires an increase to default memory limits).
 php -d memory_limit=256M tests/Example.php
 ```
 
+Using a generic is just a matter of instantiating it with the required typed
+parameters which will be used for type checking from then on:
+
+```php
+<?php
+
+use ArtisanSDK\Generic\Types\HashMap;
+
+// Generate a generic hash map consisting of integer keys and string values
+// @example [0 => 'foo', 1 => 'bar', ... ]
+$map = HashMap::generic(HashMap::TYPE_INT, HashMap::TYPE_STRING);
+$map->set(0, 'foo');
+$map->set('1', 'bar'); // throws InvalidArgumentException because string is first parameter
+
+// Generate a generic hash map consisting of string keys and stdClass values
+// @example ['foo' => stdClass, 'bar' => stdClass, ... ]
+$map = HashMap::generic(HashMap::TYPE_STRING, 'stdClass');
+$map->set('foo', new stdClass());
+$map->set('bar', 123); // throws InvalidArgumentException
+```
+
+Each generic like `ArtisanSDK\Generic\Types\Collection` implements the `ArtisanSDK\Generic\Contract` which has all the pre-defined type constants.
+Importing the generic provides all the needed dependencies to use the generic.
+Instead of referring to `Contract::TYPE_*` constants, you can just refer to them
+on the generic itself like `Collection::TYPE_*`. See `ArtisanSDK\Generic\Contract`
+for all pre-defined type constants.
+
 ### Motivation Behind the Library
 
 Generics (or templated classes) come up a lot in systems that have lots of classes
@@ -158,6 +185,25 @@ class Stack implements Contract
         return array_slice($this->items, $offset, $length);
     }
 }
+```
+
+Then to use your custom generic, you'll need to define the stack's typed parameter.
+In this case we are creating a stack that accepts User classes only. Passing in
+any other class would throw an exception. The following is an example:
+
+```php
+<?php
+
+use App\Models\User;
+use App\Types\Stack;
+
+$users = Stack::generic(User::class);
+$users->push(new User());
+$users->push(new stdClass()); // throws InvalidArgumentException
+
+$stack = Stack::generic('stdClass');
+$stack->push(new stdClass());
+$stack->push(new User()); // throws InvalidArgumentException
 ```
 
 ### Run Without Type Checks
