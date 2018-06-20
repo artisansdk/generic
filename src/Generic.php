@@ -11,34 +11,39 @@ use ReflectionMethod;
 abstract class Generic implements Contract
 {
     /**
-     * Map of method parameter positions to argument types.
-     *
-     * @example Generic::make($template, 'int', 'string') --> ['foo' => [0 => 'int', 1 => 'string']]
+     * Map of typed parameters positions to types.
      *
      * @var array
      */
-    private $methods = [];
+    protected $types = [];
+
+    /**
+     * Map of method parameter positions to argument types.
+     *
+     * @var array
+     */
+    protected static $methods = [];
 
     /**
      * The underlying untyped template.
      *
      * @var \ArtisanSDK\Generic\Contract
      */
-    private $template;
+    protected $template;
 
     /**
      * Flag for if generic type checking is enabled.
      *
      * @var bool
      */
-    private $enabled;
+    protected $enabled;
 
     /**
      * The environment variable that enables generic type checking.
      *
      * @var string
      */
-    const ENV_VARIABLE = 'PHP_GENERICS_DISABLE';
+    const ENV_VARIABLE = 'PHP_GENERIC_DISABLE';
 
     /**
      * Construct the generic as a typed proxy to the untyped template.
@@ -67,26 +72,37 @@ abstract class Generic implements Contract
             // The remaining arguments of the constructor are the types that need
             // to be setup for when methods are called. Each argument defines a type
             // for that positional argument.
-            $types = $this->resolveTypes($types);
+            $this->types = $this->resolveTypes($types);
 
-            // Using reflection on the generic interface we get the parameters
-            // names that correspond to the position of the resolved types.
-            $reflection = new ReflectionClass($this->template);
-            $method = $reflection->getMethod('generic');
-            $params = $this->resolveParams($method);
-            if( empty($params) ) {
-                throw new ReflectionException(sprintf('Invalid docblock on %s::%s() method.', $method->class, $method->name));
-            }
+            // Use reflection only once per template.
+            $class = get_class($this->template);
+            if( ! isset(static::$methods[$class]) ) {
+                static::$methods[$class] = [];
 
-            // Using reflection on the public methods of the template we create
-            // a method map of template method parameters to the resolved types.
-            foreach($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-                $this->methods[$method->name] = [];
-                foreach($this->resolveParams($method) as $offset => $name) {
-                    $index = array_search($name, $params, true);
-                    $this->methods[$method->name][$offset] = $types[$index];
+                // Using reflection on the generic interface we get the parameters
+                // names that correspond to the position of the resolved types.
+                $reflection = new ReflectionClass($this->template);
+                $method = $reflection->getMethod('generic');
+                $params = $this->resolveParams($method);
+                if( empty($params) ) {
+                    throw new ReflectionException(sprintf('Invalid docblock on %s::%s() method.', $method->class, $method->name));
                 }
-                // @todo iterate over actual params instead so dobclock params are defaults only
+
+                // Using reflection on the public methods of the template we create
+                // a method map of template method parameters to the resolved types.
+                foreach($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+                    static::$methods[$class][$method->name] = [];
+                    $hints = $this->resolveParams($method);
+                    foreach($method->getParameters() as $offset => $param) {
+                        $hints[$offset] = $param->name;
+                    }
+                    foreach($hints as $offset => $param) {
+                        $index = array_search($param, $params, true);
+                        if( false !== $index ) {
+                            static::$methods[$class][$method->name][$offset] = $index;
+                        }
+                    }
+                }
             }
         }
     }
@@ -106,12 +122,14 @@ abstract class Generic implements Contract
         if( method_exists($this->template, $method) ) {
 
             if( $this->enabled() ) {
-                foreach($args as $index => $value ) {
+                $class = get_class($this->template);
+                foreach($args as $offset => $value ) {
 
                     // Only assert the type matches if the argument for the method
                     // was templated as a generic parameter type.
-                    if( isset($this->methods[$method][$index])) {
-                        $this->assertTypeMatches($this->methods[$method][$index], $value);
+                    if( isset(static::$methods[$class][$method][$offset])) {
+                        $index = static::$methods[$class][$method][$offset];
+                        $this->assertTypeMatches($this->types[$index], $value);
                     }
                 }
             }
@@ -138,7 +156,7 @@ abstract class Generic implements Contract
      *
      * @return bool
      */
-    private function enabled() : bool
+    protected function enabled() : bool
     {
         if( is_null($this->enabled) ) {
             $this->enabled = ! (bool) getenv(static::ENV_VARIABLE);
@@ -157,7 +175,7 @@ abstract class Generic implements Contract
      *
      * @return void
      */
-    private function assertTypeMatches(string $expected, $value) : void
+    protected function assertTypeMatches(string $expected, $value) : void
     {
         $actual = is_string($value) ? static::TYPE_STRING : $this->resolveType($value);
 
@@ -173,7 +191,7 @@ abstract class Generic implements Contract
      *
      * @return \ArtisanSDK\Generic\Contract
      */
-    private function resolveTemplate($template) : Contract
+    protected function resolveTemplate($template) : Contract
     {
         // Untyped template was passed in already constructed.
         if( is_object($template) ) {
@@ -199,7 +217,7 @@ abstract class Generic implements Contract
      *
      * @return array
      */
-    private function resolveTypes(array $types = []) : array
+    protected function resolveTypes(array $types = []) : array
     {
         $resolved = [];
 
@@ -219,7 +237,7 @@ abstract class Generic implements Contract
      *
      * @return string
      */
-    private function resolveType($type) : string
+    protected function resolveType($type) : string
     {
         // Pass an object, get back the FQNS as custom type.
         if( is_object($type) ) {
@@ -280,7 +298,7 @@ abstract class Generic implements Contract
      *
      * @return array
      */
-    private function resolveParams(ReflectionMethod $method) : array
+    protected function resolveParams(ReflectionMethod $method) : array
     {
         preg_match_all('/\@param[\s]+[\w]+[\s]+\$([\w]+)/', $method->getDocComment(), $matches);
 

@@ -12,7 +12,7 @@ class Collection implements Contract
      *
      * @var array
      */
-    private $items = [];
+    protected $items = [];
 
     /**
      * Make a new generic based on class.

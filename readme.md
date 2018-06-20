@@ -21,11 +21,10 @@ composer require artisansdk/generic
 
 ## Usage Guide
 
-For an example see `tests/Example.php` and run the following (use of reflection
-in the performance tests requires an increase to default memory limits).
+For examples see `tests/Example.php`. Run the following for a performance test:
 
 ```bash
-php -d memory_limit=256M tests/Example.php
+php tests/Example.php
 ```
 
 Using a generic is just a matter of instantiating it with the required typed
@@ -136,7 +135,9 @@ This is the proxied template class which defines the generics behavior. Notice
 how `push()` type hints with the doc block the `$item` parameter and is therefore
 type checked while `all()` and `pop()` accept no parameters and are not type checked.
 Additionally `slice()` accepts parameters but does not type hint them and therefore
-are not type checked via the proxy (though they are via PHP internals).
+are not type checked via the proxy (though they are via PHP internals). Technically
+you could omit the doc block on the `push()` method because the parameter name
+matches a typed parameter: only `generic()` strictly requires the doc block.
 
 ```php
 <?php
@@ -160,11 +161,6 @@ class Stack implements Contract
         return new Type(...$args);
     }
 
-    public function all() : array
-    {
-        return $this->items;
-    }
-
     /**
      * @param mixed $item to push on stack
      */
@@ -178,6 +174,11 @@ class Stack implements Contract
     public function pop()
     {
         return array_pop($this->items);
+    }
+
+    public function all() : array
+    {
+        return $this->items;
     }
 
     public function slice(int $offset, int $length = null) : array
@@ -208,18 +209,19 @@ $stack->push(new User()); // throws InvalidArgumentException
 
 ### Run Without Type Checks
 
-Set the environment variable `PHP_GENERICS_DISABLE=1` to disable generic type
-checking (something you should do in production to improve speed so long as you
-run checks in your CI/CD pipelines).
+Set the environment variable `PHP_GENERIC_DISABLE=1` to disable generic type
+checking. This is something you probably will want to do in production to improve
+speed so long as you run checks in your CI/CD pipelines.
 
 ```bash
-PHP_GENERICS_DISABLE=1 php -d memory_limit=256M tests/Example.php
+PHP_GENERIC_DISABLE=1 php tests/Example.php
 ```
 
 The performance difference for generating 100K type objects is negligible at only
-0.0141ms average while the cost difference of making 40K calls to the proxied
-template class with type checking enabled is 20ms. The memory consumption is much
-higher however with a 215MB difference observed.
+0.0014ms average while the cost difference of making 400K calls to the proxied
+template class is 25756ms with type checking disabled vs. 26184ms when enabled.
+That is effectively a 363ms difference or 0.001ms per call (negligible).
+The memory consumption is more at 25MB disabled vs. 61MB enabled.
 
 ## Licensing
 

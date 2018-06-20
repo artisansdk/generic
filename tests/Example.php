@@ -5,24 +5,25 @@
 
 require_once(__DIR__.'/../vendor/autoload.php');
 
-use ArtisanSDK\Generic\Generic;
-use ArtisanSDK\Generic\Contract;
 use ArtisanSDK\Generic\Types\Collection;
 use ArtisanSDK\Generic\Types\HashMap;
 
 class Foo {}
 class Bar {}
 
+$iterations = 10; // number of performance interations to test
+$instances = 100000; // number of instances to create per iteration
+
 // Construct a typed generic different ways:
 // 1) use the type factory
 // 2) use the type constructor
 // 3) use the template factory (bad)
-$generic = HashMap::generic(Contract::TYPE_STRING, Bar::class);
-$generic = new HashMap(Contract::TYPE_STRING, Bar::class);
-$generic = ArtisanSDK\Generic\Types\Templates\HashMap::generic(Contract::TYPE_STRING, Bar::class);
+$generic = HashMap::generic(HashMap::TYPE_STRING, Bar::class);
+$generic = new HashMap(HashMap::TYPE_STRING, Bar::class);
+$generic = ArtisanSDK\Generic\Types\Templates\HashMap::generic(HashMap::TYPE_STRING, Bar::class);
 
 // Set the bar at the foo key in the hash map
-$bars = HashMap::generic(Contract::TYPE_STRING, Bar::class);
+$bars = HashMap::generic(HashMap::TYPE_STRING, Bar::class);
 $bars->set('foo', new Bar()); // ['foo' => Bar]
 
 // Demonstrates that type checking is based on reflected param names
@@ -41,7 +42,7 @@ try { $bars->set('foo', new Foo()); } catch (InvalidArgumentException $e) { echo
 try { $bars->set(0, new Bar()); } catch (InvalidArgumentException $e) { echo $e->getMessage().PHP_EOL;}
 
 // Demonstrate different generics can be created
-$foos = HashMap::generic(Contract::TYPE_INT, Foo::class);
+$foos = HashMap::generic(HashMap::TYPE_INT, Foo::class);
 $foos->set(0, new Foo());
 
 // Different generics can have different signatures and still type check
@@ -63,12 +64,11 @@ $callable($foos);
 $callable($bars);
 
 // Performance test for the cost of constructing generics
-// 0.0141ms, 215MB difference
 $timers = [];
 $generics = [];
-for($i=0;$i<100000;$i++) {
+for($i=0;$i<$instances;$i++) {
     $time = microtime(true);
-    $generics[] = HashMap::generic(Generic::TYPE_INT, new stdClass());
+    $generics[] = HashMap::generic(HashMap::TYPE_INT, new stdClass());
     $timer = (microtime(true) - $time);
     $timers[] = $timer;
 }
@@ -76,12 +76,11 @@ echo '= '.round(array_sum($timers) / count($timers) * 1000, 4).' ms average'.PHP
 echo '= '.round(memory_get_usage()/1024/1024).'MB'.PHP_EOL;
 
 // Performance test for the cost of type checking at call time
-// 20ms, 215MB difference
 $timers = [];
-$generic = HashMap::generic(Generic::TYPE_INT, new stdClass());
-for($i=0;$i<10;$i++) {
+$generic = HashMap::generic(HashMap::TYPE_INT, new stdClass());
+for($i=0;$i<$iterations;$i++) {
     $time = microtime(true);
-    for($x=0;$x<10000;$x++) {
+    for($x=0;$x<$instances;$x++) {
         $obj = new stdClass();
         $generic->set($x, $obj);
         $generic->get($x);

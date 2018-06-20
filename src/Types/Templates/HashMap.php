@@ -13,7 +13,7 @@ class HashMap implements Contract
      *
      * @var array
      */
-    private $map = [];
+    protected $map = [];
 
     /**
      * Make a new generic based on class.
